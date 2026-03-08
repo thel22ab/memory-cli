@@ -12,17 +12,23 @@ export interface App {
 export interface AppOptions {
   collect?: () => Promise<Snapshot>;
   dashboardFactory?: (handlers: DashboardHandlers) => Dashboard;
+  now?: () => number;
   refreshMs?: number;
   signalService?: SignalService;
+  sortIntervalMs?: number;
   topN?: number;
 }
 
 export function createApp(options: AppOptions = {}): App {
   const collect = options.collect ?? (() => collectSnapshot(options.topN ?? 10));
   const signalService = options.signalService ?? createSignalService();
+  const now = options.now ?? Date.now;
   const refreshMs = options.refreshMs ?? 1500;
+  const sortIntervalMs = options.sortIntervalMs ?? 10_000;
   const dashboardFactory = options.dashboardFactory ?? createDashboard;
 
+  let displaySnapshot: Snapshot | null = null;
+  let lastSortedAt = 0;
   let refreshPromise: Promise<void> | null = null;
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;
@@ -77,7 +83,14 @@ export function createApp(options: AppOptions = {}): App {
     refreshPromise = (async () => {
       try {
         const snapshot = await collect();
-        dashboard.render(snapshot);
+        const shouldResort = displaySnapshot === null || now() - lastSortedAt >= sortIntervalMs;
+        displaySnapshot = stabilizeSnapshot(displaySnapshot, snapshot, shouldResort);
+
+        if (shouldResort) {
+          lastSortedAt = now();
+        }
+
+        dashboard.render(displaySnapshot);
 
         if (announce) {
           setStatus(`Refreshed at ${snapshot.collectedAt.toLocaleTimeString()}.`, "info");
@@ -120,6 +133,33 @@ export async function collectSnapshot(topN = 10): Promise<Snapshot> {
     processes,
     memory,
     collectedAt: new Date()
+  };
+}
+
+function stabilizeSnapshot(
+  previousSnapshot: Snapshot | null,
+  nextSnapshot: Snapshot,
+  shouldResort: boolean
+): Snapshot {
+  if (!previousSnapshot || shouldResort) {
+    return nextSnapshot;
+  }
+
+  const previousOrder = new Map(previousSnapshot.processes.map((processInfo, index) => [processInfo.pid, index]));
+  const processes = [...nextSnapshot.processes].sort((left, right) => {
+    const leftIndex = previousOrder.get(left.pid) ?? Number.MAX_SAFE_INTEGER;
+    const rightIndex = previousOrder.get(right.pid) ?? Number.MAX_SAFE_INTEGER;
+
+    if (leftIndex !== rightIndex) {
+      return leftIndex - rightIndex;
+    }
+
+    return right.rssBytes - left.rssBytes;
+  });
+
+  return {
+    ...nextSnapshot,
+    processes
   };
 }
 

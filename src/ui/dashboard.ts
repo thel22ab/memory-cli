@@ -23,7 +23,7 @@ interface StatusState {
   tone: StatusTone;
 }
 
-const HELP_TEXT = "up/down move  |  t terminate  |  k force kill  |  r refresh  |  q quit";
+const HELP_TEXT = "{bold}Commands:{/bold} up/down move  |  t terminate  |  k force kill  |  r refresh  |  q quit";
 const NAVIGATION_KEYS = ["up", "down", "pageup", "pagedown", "home", "end"];
 
 export function createDashboard(handlers: DashboardHandlers): Dashboard {
@@ -55,7 +55,7 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
     top: 9,
     left: 0,
     width: "100%",
-    bottom: 3,
+    bottom: 4,
     border: "line",
     label: " Top Processes ",
     padding: {
@@ -102,9 +102,9 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
     bottom: 0,
     left: 0,
     width: "100%",
-    height: 3,
+    height: 4,
     border: "line",
-    label: " Status ",
+    label: " Status & Commands ",
     tags: true,
     padding: {
       left: 1,
@@ -232,7 +232,7 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
   }
 
   function renderFooter(): void {
-    footerBox.setContent(`${colorize(statusState.message, statusState.tone)}\n${HELP_TEXT}`);
+    footerBox.setContent(`${colorize(statusState.message, statusState.tone)}\n\n${HELP_TEXT}`);
   }
 
   function getSelectedProcess(): ProcessInfo | undefined {
