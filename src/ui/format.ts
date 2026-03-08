@@ -26,6 +26,10 @@ export function formatPressure(level: PressureLevel): string {
   return level.toUpperCase();
 }
 
+export function formatRatio(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export function formatProcessRow(processInfo: ProcessInfo, nameWidth: number): string {
   const pid = pad(String(processInfo.pid), 7, "left");
   const user = pad(truncate(processInfo.user, 12), 12, "right");
@@ -52,4 +56,3 @@ export function truncate(value: string, width: number): string {
 function pad(value: string, width: number, align: "left" | "right"): string {
   return align === "left" ? value.padStart(width, " ") : value.padEnd(width, " ");
 }
-

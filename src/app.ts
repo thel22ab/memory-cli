@@ -1,7 +1,8 @@
 import { fetchMemorySummary } from "./services/memory";
 import { fetchTopProcesses } from "./services/processes";
+import { collectReportSnapshot, writeSnapshotReport } from "./services/report";
 import { createSignalService, describeProcessRisk, type SignalService } from "./services/signals";
-import type { ManagedSignal, Snapshot } from "./types";
+import type { ManagedSignal, ReportSnapshot, Snapshot } from "./types";
 import { createDashboard, type Dashboard, type DashboardHandlers, type StatusTone } from "./ui/dashboard";
 
 export interface App {
@@ -13,14 +14,26 @@ export interface AppOptions {
   collect?: () => Promise<Snapshot>;
   dashboardFactory?: (handlers: DashboardHandlers) => Dashboard;
   now?: () => number;
+  reportCollector?: () => Promise<ReportSnapshot>;
+  reportDiagnosticWindowMs?: number;
+  reportWriter?: (snapshot: ReportSnapshot) => Promise<string>;
   refreshMs?: number;
   signalService?: SignalService;
   sortIntervalMs?: number;
   topN?: number;
 }
 
+const DEFAULT_DASHBOARD_TOP_N = 20;
+
 export function createApp(options: AppOptions = {}): App {
-  const collect = options.collect ?? (() => collectSnapshot(options.topN ?? 10));
+  const collect = options.collect ?? (() => collectSnapshot(options.topN ?? DEFAULT_DASHBOARD_TOP_N));
+  const reportCollector =
+    options.reportCollector ??
+    (() =>
+      collectReportSnapshot({
+        diagnosticWindowMs: options.reportDiagnosticWindowMs ?? 10_000
+      }));
+  const reportWriter = options.reportWriter ?? ((snapshot: ReportSnapshot) => writeSnapshotReport(snapshot));
   const signalService = options.signalService ?? createSignalService();
   const now = options.now ?? Date.now;
   const refreshMs = options.refreshMs ?? 1500;
@@ -37,6 +50,7 @@ export function createApp(options: AppOptions = {}): App {
     onForceKill: (target) => handleSignal(target, "SIGKILL"),
     onQuit: () => stop(),
     onRefresh: () => refresh(true),
+    onSnapshotReport: () => handleSnapshotReport(),
     onTerminate: (target) => handleSignal(target, "SIGTERM")
   });
 
@@ -94,6 +108,8 @@ export function createApp(options: AppOptions = {}): App {
 
         if (announce) {
           setStatus(`Refreshed at ${snapshot.collectedAt.toLocaleTimeString()}.`, "info");
+        } else {
+          setStatus("Monitoring memory usage.", "info");
         }
       } catch (error) {
         setStatus(toErrorMessage(error), "error");
@@ -121,12 +137,24 @@ export function createApp(options: AppOptions = {}): App {
     }
   }
 
+  async function handleSnapshotReport(): Promise<void> {
+    setStatus("Creating snapshot report...", "info");
+
+    try {
+      const snapshot = await reportCollector();
+      const reportPath = await reportWriter(snapshot);
+      setStatus(`Snapshot report saved to ${reportPath}.`, "success");
+    } catch (error) {
+      setStatus(toErrorMessage(error), "error");
+    }
+  }
+
   function setStatus(message: string, tone: StatusTone): void {
     dashboard.setStatus(message, tone);
   }
 }
 
-export async function collectSnapshot(topN = 10): Promise<Snapshot> {
+export async function collectSnapshot(topN = DEFAULT_DASHBOARD_TOP_N): Promise<Snapshot> {
   const [processes, memory] = await Promise.all([fetchTopProcesses(topN), fetchMemorySummary()]);
 
   return {

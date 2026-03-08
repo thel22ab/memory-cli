@@ -1,20 +1,14 @@
 #!/usr/bin/env bun
 
-import { createApp } from "./app";
+import { runCli } from "./cli";
 
 export async function run(): Promise<void> {
   if (process.platform !== "darwin") {
     throw new Error("memory-cli currently supports macOS only.");
   }
 
-  const app = createApp();
-
-  try {
-    await app.start();
-  } catch (error) {
-    app.stop();
-    throw error;
-  }
+  const exitCode = await runCli(process.argv.slice(2));
+  process.exitCode = exitCode;
 }
 
 if (require.main === module) {

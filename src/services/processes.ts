@@ -11,9 +11,14 @@ export function parsePsOutput(output: string): ProcessInfo[] {
     .sort((left, right) => right.rssBytes - left.rssBytes);
 }
 
-export async function fetchTopProcesses(limit = 10): Promise<ProcessInfo[]> {
+export async function fetchProcesses(): Promise<ProcessInfo[]> {
   const output = await runCommand("ps", PS_ARGS);
-  return parsePsOutput(output).slice(0, limit);
+  return parsePsOutput(output);
+}
+
+export async function fetchTopProcesses(limit = 20): Promise<ProcessInfo[]> {
+  const processes = await fetchProcesses();
+  return processes.slice(0, limit);
 }
 
 function parsePsLine(line: string): ProcessInfo | null {
@@ -50,4 +55,3 @@ function parsePsLine(line: string): ProcessInfo | null {
     cpuPercent
   };
 }
-

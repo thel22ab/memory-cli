@@ -29,6 +29,7 @@ It is intentionally narrow:
 - send `SIGTERM` to ask a process to exit cleanly
 - confirm and send `SIGKILL` when a process is truly wedged
 - refresh on demand or let the dashboard keep updating automatically
+- save a snapshot report for later analysis
 
 ## Safety Rails
 
@@ -84,7 +85,13 @@ Keyboard shortcuts:
 - `t`: send `SIGTERM` to the selected process
 - `k`: confirm and send `SIGKILL` to the selected process
 - `r`: refresh immediately
+- `s`: write a snapshot report to `~/Downloads/memory-reports`
 - `q` or `Ctrl+C`: quit
+
+CLI subcommands:
+
+- `memory-cli`: launch the live dashboard
+- `memory-cli snapshot-report`: write a Markdown snapshot report and print its path
 
 ## How It Works
 
@@ -96,6 +103,19 @@ Keyboard shortcuts:
 - process signals are sent through Bun's process APIs with extra guardrails and friendlier errors
 
 The memory pressure label is a lightweight heuristic derived from estimated available memory and compressed memory. It is meant to help you decide how urgent the situation is, not replace full system diagnostics.
+
+## Snapshot Reports
+
+Snapshot reports are written to `~/Downloads/memory-reports` by default. Each report now combines several layers so the process list and the pressure diagnosis are easier to reconcile:
+
+- all visible processes for full RSS accounting
+- a top-process view that shows the top 50 processes by RSS
+- aggregated process families so helpers and renderer trees roll up into app-level totals
+- a memory-accounting section with visible RSS totals and an unexplained-vs-visible gap
+- a pressure-diagnostics section with pagein/pageout/swap deltas over a short sampling window
+- raw counter/process blocks you can paste into issues or notes
+
+The live dashboard still shows the top 20 processes to stay focused in the terminal. Reports intentionally go wider and slower so they are more useful for root-cause analysis than the live TUI.
 
 ## Development
 

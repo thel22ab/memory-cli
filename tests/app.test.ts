@@ -2,7 +2,7 @@ import { describe, expect, mock, test } from "bun:test";
 
 import { createApp } from "../src/app";
 import type { Dashboard, DashboardHandlers } from "../src/ui/dashboard";
-import type { Snapshot } from "../src/types";
+import type { ReportSnapshot, Snapshot } from "../src/types";
 
 const snapshot: Snapshot = {
   processes: [
@@ -36,6 +36,22 @@ const snapshot: Snapshot = {
   collectedAt: new Date("2026-03-08T12:00:00.000Z")
 };
 
+const reportSnapshot: ReportSnapshot = {
+  ...snapshot,
+  diagnostics: {
+    windowMs: 10_000,
+    baselineCollectedAt: new Date("2026-03-08T11:59:50.000Z"),
+    pageinsDelta: 0,
+    pageoutsDelta: 0,
+    swapinsDelta: 0,
+    swapoutsDelta: 0,
+    pageinsPerSecond: 0,
+    pageoutsPerSecond: 0,
+    swapinsPerSecond: 0,
+    swapoutsPerSecond: 0
+  }
+};
+
 describe("createApp", () => {
   test("refreshes data on start and wires signal actions", async () => {
     const collect = mock(async () => snapshot);
@@ -43,6 +59,8 @@ describe("createApp", () => {
     const setStatus = mock();
     const destroy = mock();
     const send = mock(async () => undefined);
+    const reportWriter = mock(async () => "/tmp/report.md");
+    const reportCollector = mock(async () => reportSnapshot);
     let handlers: DashboardHandlers | undefined;
 
     const dashboardFactory = (nextHandlers: DashboardHandlers): Dashboard => {
@@ -57,7 +75,9 @@ describe("createApp", () => {
     const app = createApp({
       collect,
       dashboardFactory,
+      reportCollector,
       refreshMs: 60_000,
+      reportWriter,
       signalService: {
         send
       }
@@ -71,8 +91,45 @@ describe("createApp", () => {
     await handlers?.onTerminate(snapshot.processes[0]);
     expect(send).toHaveBeenCalledWith(snapshot.processes[0], "SIGTERM");
 
+    await handlers?.onSnapshotReport();
+    expect(reportWriter).toHaveBeenCalledTimes(1);
+    expect(setStatus).toHaveBeenCalledWith("Creating snapshot report...", "info");
+    expect(setStatus).toHaveBeenCalledWith("Snapshot report saved to /tmp/report.md.", "success");
+
     handlers?.onQuit();
     expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  test("surfaces snapshot report failures", async () => {
+    const collect = mock(async () => snapshot);
+    const setStatus = mock();
+    const reportCollector = mock(async () => reportSnapshot);
+    let handlers: DashboardHandlers | undefined;
+
+    const app = createApp({
+      collect,
+      dashboardFactory: (nextHandlers: DashboardHandlers): Dashboard => {
+        handlers = nextHandlers;
+        return {
+          render: mock(),
+          setStatus,
+          destroy: mock()
+        };
+      },
+      refreshMs: 60_000,
+      reportCollector,
+      reportWriter: mock(async () => {
+        throw new Error("disk full");
+      }),
+      signalService: {
+        send: mock(async () => undefined)
+      }
+    });
+
+    await app.start();
+    await handlers?.onSnapshotReport();
+
+    expect(setStatus).toHaveBeenCalledWith("disk full", "error");
   });
 
   test("keeps process order stable until the next sort window", async () => {

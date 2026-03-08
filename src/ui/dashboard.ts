@@ -9,6 +9,7 @@ export interface DashboardHandlers {
   onForceKill: (target: ProcessInfo) => Promise<void> | void;
   onQuit: () => void;
   onRefresh: () => Promise<void> | void;
+  onSnapshotReport: () => Promise<void> | void;
   onTerminate: (target: ProcessInfo) => Promise<void> | void;
 }
 
@@ -23,7 +24,8 @@ interface StatusState {
   tone: StatusTone;
 }
 
-const HELP_TEXT = "{bold}Commands:{/bold} up/down move  |  t terminate  |  k force kill  |  r refresh  |  q quit";
+const HELP_TEXT =
+  "{bold}Commands:{/bold} up/down move  |  t terminate  |  k force kill  |  r refresh  |  s snapshot report  |  q quit";
 const NAVIGATION_KEYS = ["up", "down", "pageup", "pagedown", "home", "end"];
 
 export function createDashboard(handlers: DashboardHandlers): Dashboard {
@@ -40,7 +42,7 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
     top: 0,
     left: 0,
     width: "100%",
-    height: 9,
+    height: 8,
     border: "line",
     label: " Memory Summary ",
     tags: true,
@@ -52,7 +54,7 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
 
   const processFrame = blessed.box({
     parent: screen,
-    top: 9,
+    top: 8,
     left: 0,
     width: "100%",
     bottom: 4,
@@ -160,6 +162,10 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
     void handlers.onRefresh();
   });
 
+  screen.key("s", () => {
+    void handlers.onSnapshotReport();
+  });
+
   screen.key(["q", "C-c"], () => {
     handlers.onQuit();
   });
@@ -232,7 +238,7 @@ export function createDashboard(handlers: DashboardHandlers): Dashboard {
   }
 
   function renderFooter(): void {
-    footerBox.setContent(`${colorize(statusState.message, statusState.tone)}\n\n${HELP_TEXT}`);
+    footerBox.setContent(`${colorize(statusState.message, statusState.tone)}\n${HELP_TEXT}`);
   }
 
   function getSelectedProcess(): ProcessInfo | undefined {
@@ -320,7 +326,6 @@ function buildSummary(snapshot: Snapshot | null, selectedProcess: ProcessInfo | 
     `{bold}Free:{/bold} ${formatBytes(memory.freeBytes)}   {bold}Active:{/bold} ${formatBytes(memory.activeBytes)}   {bold}Inactive:{/bold} ${formatBytes(memory.inactiveBytes)}`,
     `{bold}Wired:{/bold} ${formatBytes(memory.wiredBytes)}   {bold}Compressed:{/bold} ${formatBytes(memory.compressedBytes)}   {bold}Speculative:{/bold} ${formatBytes(memory.speculativeBytes)}`,
     `{bold}Pageouts:{/bold} ${formatCount(memory.pageouts)}   {bold}Swapouts:{/bold} ${formatCount(memory.swapouts)}   {bold}Last refresh:{/bold} ${snapshot.collectedAt.toLocaleTimeString()}`,
-    "",
     truncate(selectedLine, 110)
   ].join("\n");
 }

@@ -35,3 +35,32 @@ export interface Snapshot {
   collectedAt: Date;
 }
 
+export interface ReportDiagnostics {
+  windowMs: number;
+  baselineCollectedAt: Date;
+  pageinsDelta: number;
+  pageoutsDelta: number;
+  swapinsDelta: number;
+  swapoutsDelta: number;
+  pageinsPerSecond: number;
+  pageoutsPerSecond: number;
+  swapinsPerSecond: number;
+  swapoutsPerSecond: number;
+}
+
+export interface ReportSnapshot extends Snapshot {
+  diagnostics: ReportDiagnostics;
+}
+
+export interface ReportContext {
+  hostname: string;
+  platform: string;
+  arch: string;
+  commandVersion: string;
+  generatedAt: Date;
+}
+
+export interface SnapshotReportWriteOptions {
+  outputPath?: string;
+  reportsDir?: string;
+}
