@@ -1,0 +1,35 @@
+{
+  "name": "memory-cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight macOS terminal memory manager for memory pressure triage.",
+  "bin": {
+    "memory-cli": "dist/index.js"
+  },
+  "scripts": {
+    "build": "bunx tsc -p tsconfig.json",
+    "dev": "bun run src/index.ts",
+    "start": "bun dist/index.js",
+    "lint": "eslint .",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "typecheck": "bunx tsc -p tsconfig.json --noEmit"
+  },
+  "packageManager": "bun@1.3.3",
+  "engines": {
+    "bun": ">=1.3.3"
+  },
+  "dependencies": {
+    "neo-blessed": "^0.2.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/blessed": "^0.1.27",
+    "@types/bun": "^1.3.10",
+    "@types/node": "^25.3.5",
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
+  }
+}
