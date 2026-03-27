@@ -49,7 +49,25 @@ This project is macOS-only because it relies on `vm_stat` and macOS `ps` output.
 
 ## Installation
 
-Clone the repo and install dependencies:
+Install globally from npm:
+
+```bash
+npm install -g mac-memory-cli
+```
+
+Or with Bun:
+
+```bash
+bun install -g mac-memory-cli
+```
+
+Then launch it from anywhere:
+
+```bash
+memory-cli
+```
+
+For local development, clone the repo and install dependencies:
 
 ```bash
 git clone https://github.com/thoger/memory-cli.git
@@ -61,6 +79,13 @@ Run in development:
 
 ```bash
 bun run dev
+```
+
+Create a global `memory-cli` command from your local clone:
+
+```bash
+bun link
+memory-cli
 ```
 
 Build and run the compiled CLI:
@@ -92,6 +117,7 @@ CLI subcommands:
 
 - `memory-cli`: launch the live dashboard
 - `memory-cli snapshot-report`: write a Markdown snapshot report and print its path
+- `memory-cli snapshot-report --window-seconds 30|60|120`: use a longer growth window for the report
 
 ## How It Works
 
@@ -108,14 +134,17 @@ The memory pressure label is a lightweight heuristic derived from estimated avai
 
 Snapshot reports are written to `~/Downloads/memory-reports` by default. Each report now combines several layers so the process list and the pressure diagnosis are easier to reconcile:
 
-- all visible processes for full RSS accounting
-- a top-process view that shows the top 50 processes by RSS
-- aggregated process families so helpers and renderer trees roll up into app-level totals
-- a memory-accounting section with visible RSS totals and an unexplained-vs-visible gap
-- a pressure-diagnostics section with pagein/pageout/swap deltas over a short sampling window
+- a time series over `30`, `60`, or `120` seconds instead of a single end-state snapshot
+- all visible processes for full RSS accounting in the final sample
+- a growth-sorted process table so you can see who started expanding during the sampling window
+- app-tree grouping so browser and editor helpers roll up under their parent tree more precisely
+- a memory-accounting section with explicit compressed, wired, inactive, and other/system gap breakdown
+- a pressure-diagnostics section with pagein/pageout/swap deltas across the sampling window
 - raw counter/process blocks you can paste into issues or notes
 
 The live dashboard still shows the top 20 processes to stay focused in the terminal. Reports intentionally go wider and slower so they are more useful for root-cause analysis than the live TUI.
+
+If you press `s` again while a report is still being built, `memory-cli` keeps the current run active and shows that a snapshot report is already in progress.
 
 ## Development
 

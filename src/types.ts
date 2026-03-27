@@ -3,6 +3,7 @@ export type PressureLevel = "normal" | "elevated" | "critical";
 
 export interface ProcessInfo {
   pid: number;
+  ppid: number;
   uid: number;
   user: string;
   name: string;
@@ -48,8 +49,22 @@ export interface ReportDiagnostics {
   swapoutsPerSecond: number;
 }
 
+export interface ReportTimeSeriesSample {
+  collectedAt: Date;
+  memory: MemorySummary;
+  processes: ProcessInfo[];
+}
+
+export interface ReportCollectionProgress {
+  currentSample: number;
+  totalSamples: number;
+  elapsedMs: number;
+  windowMs: number;
+}
+
 export interface ReportSnapshot extends Snapshot {
   diagnostics: ReportDiagnostics;
+  samples: ReportTimeSeriesSample[];
 }
 
 export interface ReportContext {

@@ -12,51 +12,174 @@ import {
 } from "../src/services/report";
 import type { ReportSnapshot } from "../src/types";
 
-const reportSnapshot: ReportSnapshot = {
-  processes: Array.from({ length: 60 }, (_, index) => ({
-    pid: 500 + index,
+const baselineProcesses = [
+  {
+    pid: 100,
+    ppid: 1,
+    uid: 501,
+    user: "thoger",
+    name: "Browser",
+    rssBytes: 300 * 1024 * 1024,
+    memoryPercent: 3.0,
+    cpuPercent: 1.0
+  },
+  {
+    pid: 101,
+    ppid: 100,
+    uid: 501,
+    user: "thoger",
+    name: "Browser Helper (Renderer)",
+    rssBytes: 120 * 1024 * 1024,
+    memoryPercent: 1.2,
+    cpuPercent: 2.0
+  },
+  {
+    pid: 102,
+    ppid: 100,
+    uid: 501,
+    user: "thoger",
+    name: "Browser Helper (GPU)",
+    rssBytes: 90 * 1024 * 1024,
+    memoryPercent: 0.9,
+    cpuPercent: 1.5
+  },
+  {
+    pid: 200,
+    ppid: 1,
+    uid: 501,
+    user: "thoger",
+    name: "T3 Code",
+    rssBytes: 250 * 1024 * 1024,
+    memoryPercent: 2.5,
+    cpuPercent: 1.0
+  },
+  {
+    pid: 201,
+    ppid: 200,
+    uid: 501,
+    user: "thoger",
+    name: "T3 Code Helper (Renderer)",
+    rssBytes: 110 * 1024 * 1024,
+    memoryPercent: 1.1,
+    cpuPercent: 1.4
+  }
+];
+
+const finalProcesses = [
+  {
+    ...baselineProcesses[0],
+    rssBytes: 420 * 1024 * 1024
+  },
+  {
+    ...baselineProcesses[1],
+    rssBytes: 240 * 1024 * 1024
+  },
+  {
+    ...baselineProcesses[2],
+    rssBytes: 120 * 1024 * 1024
+  },
+  {
+    ...baselineProcesses[3],
+    rssBytes: 280 * 1024 * 1024
+  },
+  {
+    ...baselineProcesses[4],
+    rssBytes: 150 * 1024 * 1024
+  },
+  ...Array.from({ length: 55 }, (_, index) => ({
+    pid: 300 + index,
+    ppid: 1,
     uid: 501,
     user: index % 2 === 0 ? "thoger" : "root|ops",
-    name:
-      index < 4
-        ? `Browser Helper (${["Renderer", "Renderer", "GPU", "Utility"][index]})`
-        : index === 4
-          ? "T3 Code Helper (Renderer)"
-          : `Process ${index + 1}`,
-    rssBytes: (60 - index) * 32 * 1024 * 1024,
-    memoryPercent: 8 - index * 0.1,
-    cpuPercent: index * 0.2
-  })),
-  memory: {
-    pageSize: 16384,
-    totalBytes: 16 * 1024 * 1024 * 1024,
-    availableEstimateBytes: Math.floor(1.3 * 1024 * 1024 * 1024),
-    freeBytes: 58 * 1024 * 1024,
-    activeBytes: Math.floor(1.3 * 1024 * 1024 * 1024),
-    inactiveBytes: Math.floor(1.1 * 1024 * 1024 * 1024),
-    wiredBytes: Math.floor(1.7 * 1024 * 1024 * 1024),
-    compressedBytes: Math.floor(3.1 * 1024 * 1024 * 1024),
-    speculativeBytes: 256 * 1024 * 1024,
-    purgeableBytes: 128 * 1024 * 1024,
-    pageins: 1_000,
-    pageouts: 800,
-    swapins: 220,
-    swapouts: 120,
-    pressureLevel: "critical"
-  },
+    name: `Process ${index + 1}`,
+    rssBytes: (60 - index) * 2 * 1024 * 1024,
+    memoryPercent: 1.0,
+    cpuPercent: 0.5
+  }))
+];
+
+const baselineMemory = {
+  pageSize: 16384,
+  totalBytes: 16 * 1024 * 1024 * 1024,
+  availableEstimateBytes: Math.floor(2.1 * 1024 * 1024 * 1024),
+  freeBytes: 512 * 1024 * 1024,
+  activeBytes: Math.floor(1.0 * 1024 * 1024 * 1024),
+  inactiveBytes: Math.floor(1.3 * 1024 * 1024 * 1024),
+  wiredBytes: Math.floor(1.5 * 1024 * 1024 * 1024),
+  compressedBytes: Math.floor(2.2 * 1024 * 1024 * 1024),
+  speculativeBytes: 256 * 1024 * 1024,
+  purgeableBytes: 128 * 1024 * 1024,
+  pageins: 880,
+  pageouts: 755,
+  swapins: 208,
+  swapouts: 113,
+  pressureLevel: "elevated" as const
+};
+
+const middleMemory = {
+  ...baselineMemory,
+  availableEstimateBytes: Math.floor(1.8 * 1024 * 1024 * 1024),
+  freeBytes: 256 * 1024 * 1024,
+  wiredBytes: Math.floor(1.6 * 1024 * 1024 * 1024),
+  compressedBytes: Math.floor(2.7 * 1024 * 1024 * 1024),
+  pageins: 940,
+  pageouts: 780,
+  swapins: 215,
+  swapouts: 118,
+  pressureLevel: "critical" as const
+};
+
+const finalMemory = {
+  pageSize: 16384,
+  totalBytes: 16 * 1024 * 1024 * 1024,
+  availableEstimateBytes: Math.floor(1.3 * 1024 * 1024 * 1024),
+  freeBytes: 58 * 1024 * 1024,
+  activeBytes: Math.floor(1.3 * 1024 * 1024 * 1024),
+  inactiveBytes: Math.floor(1.1 * 1024 * 1024 * 1024),
+  wiredBytes: Math.floor(1.7 * 1024 * 1024 * 1024),
+  compressedBytes: Math.floor(3.1 * 1024 * 1024 * 1024),
+  speculativeBytes: 256 * 1024 * 1024,
+  purgeableBytes: 128 * 1024 * 1024,
+  pageins: 1_000,
+  pageouts: 800,
+  swapins: 220,
+  swapouts: 120,
+  pressureLevel: "critical" as const
+};
+
+const reportSnapshot: ReportSnapshot = {
+  processes: finalProcesses,
+  memory: finalMemory,
   collectedAt: new Date("2026-03-08T12:34:56.000Z"),
   diagnostics: {
-    windowMs: 10_000,
-    baselineCollectedAt: new Date("2026-03-08T12:34:46.000Z"),
+    windowMs: 30_000,
+    baselineCollectedAt: new Date("2026-03-08T12:34:26.000Z"),
     pageinsDelta: 120,
     pageoutsDelta: 45,
     swapinsDelta: 12,
     swapoutsDelta: 7,
-    pageinsPerSecond: 12,
-    pageoutsPerSecond: 4.5,
-    swapinsPerSecond: 1.2,
-    swapoutsPerSecond: 0.7
-  }
+    pageinsPerSecond: 4,
+    pageoutsPerSecond: 1.5,
+    swapinsPerSecond: 0.4,
+    swapoutsPerSecond: 0.23
+  },
+  samples: [
+    {
+      collectedAt: new Date("2026-03-08T12:34:26.000Z"),
+      memory: baselineMemory,
+      processes: baselineProcesses
+    },
+    {
+      collectedAt: new Date("2026-03-08T12:34:36.000Z"),
+      memory: middleMemory,
+      processes: finalProcesses.slice(0, 20)
+    },
+    {
+      collectedAt: new Date("2026-03-08T12:34:56.000Z"),
+      memory: finalMemory,
+      processes: finalProcesses
+    }
+  ]
 };
 
 let tempDirectory: string | null = null;
@@ -71,44 +194,27 @@ afterEach(async () => {
 });
 
 describe("collectReportSnapshot", () => {
-  test("captures all processes and paging deltas across a diagnostic window", async () => {
-    const memorySamples = [
-      {
-        ...reportSnapshot.memory,
-        pageins: 100,
-        pageouts: 20,
-        swapins: 5,
-        swapouts: 1
-      },
-      {
-        ...reportSnapshot.memory,
-        pageins: 130,
-        pageouts: 28,
-        swapins: 7,
-        swapouts: 4
-      }
-    ];
-    const fetchMemory = mock(async () => memorySamples.shift() ?? reportSnapshot.memory);
-    const fetchProcessList = mock(async () => reportSnapshot.processes);
+  test("captures a time series over the configured window", async () => {
+    const fetchMemory = mock(async () => reportSnapshot.memory);
+    const fetchProcessList = mock(async () => finalProcesses);
     const sleep = mock(async () => undefined);
 
     const snapshot = await collectReportSnapshot({
-      diagnosticWindowMs: 10_000,
+      diagnosticWindowMs: 30_000,
+      sampleIntervalMs: 10_000,
       fetchMemory,
       fetchProcessList,
       sleep
     });
 
-    expect(fetchProcessList).toHaveBeenCalledTimes(1);
-    expect(snapshot.processes).toHaveLength(60);
-    expect(snapshot.diagnostics.pageinsDelta).toBe(30);
-    expect(snapshot.diagnostics.pageoutsDelta).toBe(8);
-    expect(snapshot.diagnostics.swapoutsDelta).toBe(3);
+    expect(fetchProcessList).toHaveBeenCalledTimes(4);
+    expect(snapshot.samples).toHaveLength(4);
+    expect(snapshot.processes).toHaveLength(finalProcesses.length);
   });
 });
 
 describe("formatSnapshotReport", () => {
-  test("renders accounting, grouped families, diagnostics, and a wider top-process view", () => {
+  test("renders time series, growth sorting, app-tree grouping, and explicit gap breakdown", () => {
     const report = formatSnapshotReport(reportSnapshot, {
       hostname: "my-macbook.local",
       platform: "darwin",
@@ -118,25 +224,23 @@ describe("formatSnapshotReport", () => {
     });
 
     expect(report).toContain("# Memory Snapshot Report");
-    expect(report).toContain("Memory pressure is CRITICAL.");
-    expect(report).toContain("compressed memory is 3.1 GiB");
-    expect(report).toContain("wired memory is 1.7 GiB");
-    expect(report).toContain("The report captured 60 visible processes");
-    expect(report).toContain("## Memory Accounting");
-    expect(report).toContain("Sum RSS Across Visible Processes");
-    expect(report).toContain("Unexplained vs Visible Process RSS");
-    expect(report).toContain("## Aggregated Process Families");
-    expect(report).toContain("| Browser | 4 |");
-    expect(report).toContain("Browser Helper (Renderer), Browser Helper (GPU), Browser Helper (Utility)");
-    expect(report).toContain("## Pressure Diagnostics");
-    expect(report).toContain("| Pageouts Delta | 45 (4.50/sec) |");
-    expect(report).toContain("| Swapouts Delta | 7 (0.70/sec) |");
-    expect(report).toContain("During the last 10.0 s, the system recorded active outward memory pressure");
-    expect(report).toContain("## Top Processes (Top 50 of 60)");
-    expect(report).toContain('family="Browser"');
-    expect(report).not.toContain("Process 60 |");
-    expect(report).toContain("visibleProcessCount=60");
-    expect(report).toContain("unexplainedBytes=");
+    expect(report).toContain("tracked 3 samples over 30.0 s");
+    expect(report).toContain("Gap Breakdown: Compressed");
+    expect(report).toContain("Gap Breakdown: Wired");
+    expect(report).toContain("Gap Breakdown: Inactive");
+    expect(report).toContain("Gap Breakdown: Other/System");
+    expect(report).toContain("## Time Series");
+    expect(report).toContain("| Sample | Timestamp | Visible Processes | Visible RSS | Pressure | Free | Compressed |");
+    expect(report).toContain("## App Trees By Growth");
+    expect(report).toContain("| Browser | 3 |");
+    expect(report).toContain("+270 MiB");
+    expect(report).toContain("## Processes By Growth");
+    expect(report).toContain("| 101 | thoger | 240 MiB | +120 MiB |");
+    expect(report).toContain("tree=\"Browser\"");
+    expect(report).toContain("sampleCount=3");
+    expect(report).toContain("otherSystemBytes=");
+    expect(report).toContain("During the last 30.0 s, the system recorded active outward memory pressure");
+    expect(report).not.toContain("| 354 |");
   });
 
   test("handles empty process lists gracefully", () => {
@@ -154,18 +258,22 @@ describe("formatSnapshotReport", () => {
         swapinsPerSecond: 0,
         swapoutsPerSecond: 0
       },
-      memory: {
-        ...reportSnapshot.memory,
-        pageins: 0,
-        pageouts: 0,
-        swapins: 0,
-        swapouts: 0,
-        pressureLevel: "normal"
-      }
+      samples: [
+        {
+          collectedAt: new Date("2026-03-08T12:34:26.000Z"),
+          memory: reportSnapshot.memory,
+          processes: []
+        },
+        {
+          collectedAt: new Date("2026-03-08T12:34:56.000Z"),
+          memory: reportSnapshot.memory,
+          processes: []
+        }
+      ]
     });
 
-    expect(report).toContain("No process data was returned by ps.");
-    expect(report).toContain("| No grouped process families available | 0 | 0 B | 0.0% | - |");
+    expect(report).toContain("| No grouped app trees available | 0 | 0 B | 0 B | 0.0% | - |");
+    expect(report).toContain("| - | - | 0 B | 0 B | 0.0 | 0.0 | No processes returned by ps. |");
     expect(report).toContain("pageout and swap activity stayed flat");
     expect(report).toContain("no-processes");
   });
@@ -199,7 +307,7 @@ describe("writeSnapshotReport", () => {
 
     expect(reportPath).toBe(path.join(reportsDir, "memory-report-2026-03-08-12-34-56.md"));
     expect(written).toContain("# Memory Snapshot Report");
-    expect(written).toContain("## Pressure Diagnostics");
-    expect(written).toContain("## Aggregated Process Families");
+    expect(written).toContain("## Time Series");
+    expect(written).toContain("## App Trees By Growth");
   });
 });

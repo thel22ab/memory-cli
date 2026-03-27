@@ -8,6 +8,7 @@ const snapshot: Snapshot = {
   processes: [
     {
       pid: 321,
+      ppid: 1,
       uid: 501,
       user: "thoger",
       name: "Safari",
@@ -39,8 +40,8 @@ const snapshot: Snapshot = {
 const reportSnapshot: ReportSnapshot = {
   ...snapshot,
   diagnostics: {
-    windowMs: 10_000,
-    baselineCollectedAt: new Date("2026-03-08T11:59:50.000Z"),
+    windowMs: 30_000,
+    baselineCollectedAt: new Date("2026-03-08T11:59:30.000Z"),
     pageinsDelta: 0,
     pageoutsDelta: 0,
     swapinsDelta: 0,
@@ -49,7 +50,19 @@ const reportSnapshot: ReportSnapshot = {
     pageoutsPerSecond: 0,
     swapinsPerSecond: 0,
     swapoutsPerSecond: 0
-  }
+  },
+  samples: [
+    {
+      collectedAt: new Date("2026-03-08T11:59:30.000Z"),
+      memory: snapshot.memory,
+      processes: snapshot.processes
+    },
+    {
+      collectedAt: new Date("2026-03-08T12:00:00.000Z"),
+      memory: snapshot.memory,
+      processes: snapshot.processes
+    }
+  ]
 };
 
 describe("createApp", () => {
@@ -60,7 +73,15 @@ describe("createApp", () => {
     const destroy = mock();
     const send = mock(async () => undefined);
     const reportWriter = mock(async () => "/tmp/report.md");
-    const reportCollector = mock(async () => reportSnapshot);
+    const reportCollector = mock(async (onProgress?: (progress: { currentSample: number; totalSamples: number; elapsedMs: number; windowMs: number }) => void) => {
+      onProgress?.({
+        currentSample: 1,
+        totalSamples: 2,
+        elapsedMs: 0,
+        windowMs: 30_000
+      });
+      return reportSnapshot;
+    });
     let handlers: DashboardHandlers | undefined;
 
     const dashboardFactory = (nextHandlers: DashboardHandlers): Dashboard => {
@@ -94,6 +115,7 @@ describe("createApp", () => {
     await handlers?.onSnapshotReport();
     expect(reportWriter).toHaveBeenCalledTimes(1);
     expect(setStatus).toHaveBeenCalledWith("Creating snapshot report...", "info");
+    expect(setStatus).toHaveBeenCalledWith("Creating snapshot report... sample 1/2 over 30s.", "info");
     expect(setStatus).toHaveBeenCalledWith("Snapshot report saved to /tmp/report.md.", "success");
 
     handlers?.onQuit();
@@ -103,7 +125,10 @@ describe("createApp", () => {
   test("surfaces snapshot report failures", async () => {
     const collect = mock(async () => snapshot);
     const setStatus = mock();
-    const reportCollector = mock(async () => reportSnapshot);
+    const reportCollector = mock(async (onProgress?: (progress: { currentSample: number; totalSamples: number; elapsedMs: number; windowMs: number }) => void) => {
+      void onProgress;
+      return reportSnapshot;
+    });
     let handlers: DashboardHandlers | undefined;
 
     const app = createApp({
@@ -132,6 +157,45 @@ describe("createApp", () => {
     expect(setStatus).toHaveBeenCalledWith("disk full", "error");
   });
 
+  test("prevents concurrent snapshot report runs", async () => {
+    const collect = mock(async () => snapshot);
+    const setStatus = mock();
+    let handlers: DashboardHandlers | undefined;
+    let releaseCollector: (() => void) | undefined;
+
+    const app = createApp({
+      collect,
+      dashboardFactory: (nextHandlers: DashboardHandlers): Dashboard => {
+        handlers = nextHandlers;
+        return {
+          render: mock(),
+          setStatus,
+          destroy: mock()
+        };
+      },
+      refreshMs: 60_000,
+      reportCollector: mock(
+        () =>
+          new Promise<ReportSnapshot>((resolve) => {
+            releaseCollector = () => resolve(reportSnapshot);
+          })
+      ),
+      reportWriter: mock(async () => "/tmp/report.md"),
+      signalService: {
+        send: mock(async () => undefined)
+      }
+    });
+
+    await app.start();
+    const firstRun = handlers?.onSnapshotReport();
+    const secondRun = handlers?.onSnapshotReport();
+    releaseCollector?.();
+    await firstRun;
+    await secondRun;
+
+    expect(setStatus).toHaveBeenCalledWith("Snapshot report already in progress.", "warning");
+  });
+
   test("keeps process order stable until the next sort window", async () => {
     const firstSnapshot: Snapshot = {
       ...snapshot,
@@ -139,6 +203,7 @@ describe("createApp", () => {
       processes: [
         {
           pid: 100,
+          ppid: 1,
           uid: 501,
           user: "thoger",
           name: "First",
@@ -148,6 +213,7 @@ describe("createApp", () => {
         },
         {
           pid: 200,
+          ppid: 1,
           uid: 501,
           user: "thoger",
           name: "Second",
@@ -163,6 +229,7 @@ describe("createApp", () => {
       processes: [
         {
           pid: 200,
+          ppid: 1,
           uid: 501,
           user: "thoger",
           name: "Second",
@@ -172,6 +239,7 @@ describe("createApp", () => {
         },
         {
           pid: 100,
+          ppid: 1,
           uid: 501,
           user: "thoger",
           name: "First",

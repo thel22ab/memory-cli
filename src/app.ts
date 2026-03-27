@@ -2,7 +2,7 @@ import { fetchMemorySummary } from "./services/memory";
 import { fetchTopProcesses } from "./services/processes";
 import { collectReportSnapshot, writeSnapshotReport } from "./services/report";
 import { createSignalService, describeProcessRisk, type SignalService } from "./services/signals";
-import type { ManagedSignal, ReportSnapshot, Snapshot } from "./types";
+import type { ManagedSignal, ReportCollectionProgress, ReportSnapshot, Snapshot } from "./types";
 import { createDashboard, type Dashboard, type DashboardHandlers, type StatusTone } from "./ui/dashboard";
 
 export interface App {
@@ -14,7 +14,7 @@ export interface AppOptions {
   collect?: () => Promise<Snapshot>;
   dashboardFactory?: (handlers: DashboardHandlers) => Dashboard;
   now?: () => number;
-  reportCollector?: () => Promise<ReportSnapshot>;
+  reportCollector?: (onProgress?: (progress: ReportCollectionProgress) => void) => Promise<ReportSnapshot>;
   reportDiagnosticWindowMs?: number;
   reportWriter?: (snapshot: ReportSnapshot) => Promise<string>;
   refreshMs?: number;
@@ -29,9 +29,10 @@ export function createApp(options: AppOptions = {}): App {
   const collect = options.collect ?? (() => collectSnapshot(options.topN ?? DEFAULT_DASHBOARD_TOP_N));
   const reportCollector =
     options.reportCollector ??
-    (() =>
+    ((onProgress) =>
       collectReportSnapshot({
-        diagnosticWindowMs: options.reportDiagnosticWindowMs ?? 10_000
+        diagnosticWindowMs: options.reportDiagnosticWindowMs ?? 30_000,
+        onProgress
       }));
   const reportWriter = options.reportWriter ?? ((snapshot: ReportSnapshot) => writeSnapshotReport(snapshot));
   const signalService = options.signalService ?? createSignalService();
@@ -43,6 +44,7 @@ export function createApp(options: AppOptions = {}): App {
   let displaySnapshot: Snapshot | null = null;
   let lastSortedAt = 0;
   let refreshPromise: Promise<void> | null = null;
+  let reportPromise: Promise<void> | null = null;
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   let stopped = false;
 
@@ -138,15 +140,28 @@ export function createApp(options: AppOptions = {}): App {
   }
 
   async function handleSnapshotReport(): Promise<void> {
+    if (reportPromise) {
+      setStatus("Snapshot report already in progress.", "warning");
+      return reportPromise;
+    }
+
     setStatus("Creating snapshot report...", "info");
 
-    try {
-      const snapshot = await reportCollector();
-      const reportPath = await reportWriter(snapshot);
-      setStatus(`Snapshot report saved to ${reportPath}.`, "success");
-    } catch (error) {
-      setStatus(toErrorMessage(error), "error");
-    }
+    reportPromise = (async () => {
+      try {
+        const snapshot = await reportCollector((progress) => {
+          setStatus(formatReportProgress(progress), "info");
+        });
+        const reportPath = await reportWriter(snapshot);
+        setStatus(`Snapshot report saved to ${reportPath}.`, "success");
+      } catch (error) {
+        setStatus(toErrorMessage(error), "error");
+      } finally {
+        reportPromise = null;
+      }
+    })();
+
+    return reportPromise;
   }
 
   function setStatus(message: string, tone: StatusTone): void {
@@ -193,4 +208,10 @@ function stabilizeSnapshot(
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function formatReportProgress(progress: ReportCollectionProgress): string {
+  return `Creating snapshot report... sample ${progress.currentSample}/${progress.totalSamples} over ${Math.round(
+    progress.windowMs / 1000
+  )}s.`;
 }

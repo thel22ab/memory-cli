@@ -1,7 +1,7 @@
 import type { ProcessInfo } from "../types";
 import { runCommand } from "./command";
 
-const PS_ARGS = ["-arcxo", "pid=,uid=,user=,%mem=,%cpu=,rss=,comm="];
+const PS_ARGS = ["-arcxo", "pid=,ppid=,uid=,user=,%mem=,%cpu=,rss=,comm="];
 
 export function parsePsOutput(output: string): ProcessInfo[] {
   return output
@@ -28,25 +28,36 @@ function parsePsLine(line: string): ProcessInfo | null {
     return null;
   }
 
-  const [pidToken, uidToken, userToken, memoryToken, cpuToken, rssToken, ...nameParts] =
+  const [pidToken, ppidToken, uidToken, userToken, memoryToken, cpuToken, rssToken, ...nameParts] =
     trimmed.split(/\s+/);
 
-  if (!pidToken || !uidToken || !userToken || !memoryToken || !cpuToken || !rssToken || nameParts.length === 0) {
+  if (
+    !pidToken ||
+    !ppidToken ||
+    !uidToken ||
+    !userToken ||
+    !memoryToken ||
+    !cpuToken ||
+    !rssToken ||
+    nameParts.length === 0
+  ) {
     return null;
   }
 
   const pid = Number(pidToken);
+  const ppid = Number(ppidToken);
   const uid = Number(uidToken);
   const memoryPercent = Number(memoryToken);
   const cpuPercent = Number(cpuToken);
   const rssKilobytes = Number(rssToken);
 
-  if ([pid, uid, memoryPercent, cpuPercent, rssKilobytes].some((value) => Number.isNaN(value))) {
+  if ([pid, ppid, uid, memoryPercent, cpuPercent, rssKilobytes].some((value) => Number.isNaN(value))) {
     return null;
   }
 
   return {
     pid,
+    ppid,
     uid,
     user: userToken,
     name: nameParts.join(" "),

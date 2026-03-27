@@ -25,8 +25,8 @@ const snapshot: ReportSnapshot = {
   },
   collectedAt: new Date("2026-03-08T12:00:00.000Z"),
   diagnostics: {
-    windowMs: 10_000,
-    baselineCollectedAt: new Date("2026-03-08T11:59:50.000Z"),
+    windowMs: 30_000,
+    baselineCollectedAt: new Date("2026-03-08T11:59:30.000Z"),
     pageinsDelta: 0,
     pageoutsDelta: 0,
     swapinsDelta: 0,
@@ -35,7 +35,8 @@ const snapshot: ReportSnapshot = {
     pageoutsPerSecond: 0,
     swapinsPerSecond: 0,
     swapoutsPerSecond: 0
-  }
+  },
+  samples: []
 };
 
 describe("runCli", () => {
@@ -61,14 +62,14 @@ describe("runCli", () => {
     const collectReportSnapshot = mock(async () => snapshot);
     const writeSnapshotReport = mock(async () => "/tmp/report.md");
 
-    const exitCode = await runCli(["snapshot-report"], {
+    const exitCode = await runCli(["snapshot-report", "--window-seconds", "60"], {
       stdout,
       collectReportSnapshot,
       writeSnapshotReport
     });
 
     expect(exitCode).toBe(0);
-    expect(collectReportSnapshot).toHaveBeenCalledTimes(1);
+    expect(collectReportSnapshot).toHaveBeenCalledWith({ diagnosticWindowMs: 60_000 });
     expect(writeSnapshotReport).toHaveBeenCalledWith(snapshot);
     expect(stdout.write).toHaveBeenCalledWith("/tmp/report.md\n");
   });
@@ -79,6 +80,15 @@ describe("runCli", () => {
     const exitCode = await runCli(["wat"], { stderr });
 
     expect(exitCode).toBe(1);
-    expect(stderr.write).toHaveBeenCalledWith("Usage: memory-cli [snapshot-report]\n");
+    expect(stderr.write).toHaveBeenCalledWith("Usage: memory-cli [snapshot-report --window-seconds 30|60|120]\n");
+  });
+
+  test("prints usage for invalid report window values", async () => {
+    const stderr = { write: mock(() => true) };
+
+    const exitCode = await runCli(["snapshot-report", "--window-seconds", "45"], { stderr });
+
+    expect(exitCode).toBe(1);
+    expect(stderr.write).toHaveBeenCalledWith("Usage: memory-cli [snapshot-report --window-seconds 30|60|120]\n");
   });
 });

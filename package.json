@@ -1,10 +1,18 @@
 {
-  "name": "memory-cli",
+  "name": "mac-memory-cli",
   "version": "0.1.0",
-  "private": true,
   "description": "Lightweight macOS terminal memory manager for memory pressure triage.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thel22ab/memory-cli.git"
+  },
+  "homepage": "https://github.com/thel22ab/memory-cli#readme",
+  "bugs": {
+    "url": "https://github.com/thel22ab/memory-cli/issues"
+  },
   "bin": {
-    "memory-cli": "dist/index.js"
+    "memory-cli": "src/index.ts"
   },
   "scripts": {
     "build": "bunx tsc -p tsconfig.json",
